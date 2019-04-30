@@ -3,13 +3,34 @@ LiquidCrystal lcd(12,11,5,4,3,2);
 char incomingByte = "";
 int newmsg = 0;
 char str[256] = "";
-
+int buttonPushCounter = 0;
 //Moving between screens
-const int buttonPin = 6;
-int buttonState = 0;
-int prevState = 0;
+const int buttonPin1 = 6;
+int buttonState1 = 0;
+int prevState1 = 0;
+char dscreen1 = 'w';
 int screen = -1;
 int reply;
+
+//Moving between
+const int buttonPin2 = 7;
+int buttonState2 = 0;
+int prevState2 = 0;
+char dscreen2 = 'h';
+
+//Moving between
+const int buttonPin3 = 8;
+int buttonState3 = 0;
+int prevState3 = 0;
+char dscreen3 = "t";
+
+//Moving between 
+const int buttonPin4 = 9;
+int buttonState4 = 0;
+int prevState4 = 0;
+char dscreen4 = 's';
+
+
 
 //Show words from serial
 char inData[20]; // Allocate some space for the string
@@ -25,7 +46,10 @@ boolean newData = false;
 void setup() {
   Serial.begin(9600);
   lcd.begin(16,2);
-  pinMode(buttonPin, INPUT);
+  pinMode(buttonPin1, INPUT);
+  pinMode(buttonPin2, INPUT);
+  pinMode(buttonPin3, INPUT);
+  pinMode(buttonPin4, INPUT);
   lcd.print("Enter data through");
   lcd.setCursor(0,1);
   lcd.print("serial port :)");
@@ -78,18 +102,22 @@ void showNewData() {
   }
 }
 
-void checkbutton() {
+void checkbutton(int buttonState,int buttonPin, int prevState, char dscreen) {
   buttonState = digitalRead(buttonPin);
   if (buttonState != prevState){
     if (buttonState == HIGH) {
-      Serial.println('w');
+      buttonPushCounter++;
+      Serial.println(buttonPushCounter);
     }
   }
   prevState = buttonState;
 }
 
 void loop(){
-        checkbutton();
+        checkbutton(buttonState1, buttonPin1, prevState1, dscreen1);
+        checkbutton(buttonState2, buttonPin2, prevState2, dscreen2);
+        checkbutton(buttonState3, buttonPin3, prevState3, dscreen3);
+        checkbutton(buttonState4, buttonPin4, prevState4, dscreen4);
         receive();
         showNewData();
         }

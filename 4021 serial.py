@@ -18,7 +18,7 @@ def loopsend():
 def sendword(word):
      print(word)
      word += '\n'
-     for i in range(6):
+     for i in range(1):
           ser.write(str.encode(word))
           sleep(.1)
      if ser.in_waiting:
@@ -34,10 +34,9 @@ def sendweather():
      sts = weather.get_detailed_status()
      sts +=' '+wth+'C\n'
      print(sts)
-     for i in range(6):
+     for i in range(1):
           print(sts)
           ser.write(str.encode(sts))
-          sleep(.1)
           if ser.in_waiting:
                print (ser.readline()) 
           
@@ -47,8 +46,13 @@ while True:
           ino = str(ino.strip())
           print(ino)
           if ino == "b'w'":
-#               sendword("rhela")
                sendweather()
+          elif ino == "b'h'":
+               sendword("horoscope")
+          elif ino == "b'!'":
+               sendword("time")
+          elif ino == "b's'":
+               sendword("settings")
 #     word = input("Input word\n")
 #     sendword(word)
 #sendweather("42","ops")

@@ -40,8 +40,23 @@ def sendweather():
           if ser.in_waiting:
                print (ser.readline())
 
-def sendhoroscope():
-     horoscope = pyaztro.Aztro('pisces')
+def sendhoroscope(ino):
+     signs = dict()
+     signs["b'a'"] = 'aries'
+     signs["b'b'"] = 'taurus'
+     signs["b'c'"] = 'gemini'
+     signs["b'd'"] = 'cancer'
+     signs["b'e'"] = 'leo'
+     signs["b'f'"] = 'virgo'
+     signs["b'g'"] = 'libra'
+     signs["b'h'"] = 'scorpio'
+     signs["b'i'"] = 'sagittarius'
+     signs["b'j'"] = 'capricorn'
+     signs["b'k'"] = 'aquarius'
+     signs["b'l'"] = 'pisces'
+     
+     horoscope = pyaztro.Aztro(signs[ino])
+
      horoln = horoscope.mood + ', ' + str(horoscope.lucky_number) + '\n'
      print(horoln)
      ser.write(str.encode(horoln))
@@ -54,8 +69,8 @@ while True:
           print(ino)
           if ino == "b'w'":
                sendweather()
-          elif ino == "b'h'":
-               sendhoroscope()
+          elif ino in ["b'a'", "b'b'", "b'c'", "b'd'", "b'e'", "b'f'", "b'g'", "b'h'", "b'i'", "b'j'", "b'k'", "b'l'"]:
+               sendhoroscope(ino)
           elif ino == "b't'":
                sendword("time")
           elif ino == "b's'":

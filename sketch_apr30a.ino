@@ -1,6 +1,8 @@
 #include <LiquidCrystal.h>
 LiquidCrystal lcd(12,11,5,4,3,2);
 char incomingByte = "";
+char horoln = 'a';
+String horonm = "Aries";
 int settings = 0;
 int newmsg = 0;
 char str[256] = "";
@@ -108,9 +110,9 @@ void showTime() {
 void showHoroscope() {
   lcd.clear();
   lcd.setCursor(0,0);
-  lcd.print("HOROSCOPE");
+  lcd.print(horonm);
   lcd.setCursor(0,1);
-  Serial.println('h');
+  Serial.println(horoln);
 }
 
 
@@ -136,6 +138,7 @@ int checkbutton(int buttonState,int buttonPin, int prevState, char dscreen) {
 }
 
 void showSettings(int screen){
+  if (screen == 1) {
   int newsign = 1;
   while (settings){
   lcd.blink();
@@ -157,14 +160,6 @@ void showSettings(int screen){
       }
     prevState3 = buttonState3;
   }
-  buttonState2 = digitalRead(buttonPin2);
-  if (buttonState2 != prevState2) {
-    if (buttonState2 == HIGH) {
-      newsign = 1;
-      starsign -= 1;
-      }
-  }
-    prevState2 = buttonState2;
     
     if (newsign){
       newsign = 0;
@@ -172,48 +167,71 @@ void showSettings(int screen){
       lcd.setCursor(0,0);
       switch(starsign){
         case 0:
-        lcd.print("Aries");
+        horonm = "Aries";
+        lcd.print(horonm);
+        horoln = 'a';
         break;
         case 1:
-        lcd.print("Taurus");
+        horonm = "Taurus";
+        lcd.print(horonm);
+        horoln = 'b';
         break;
         case 2:
-        lcd.print("Gemini");
+        horonm = "Gemini";
+        lcd.print(horonm);
+        horoln = 'c';
         break;
         case 3:
-        lcd.print("Cancer");
+        horonm = "Cancer";
+        lcd.print(horonm);
+        horoln = 'd';
         break;
         case 4:
-        lcd.print("Leo");
+        horonm = "Leo";
+        lcd.print(horonm);
+        horoln = 'e';
         break;
         case 5:
-        lcd.print("Virgo");
+        horonm = "Virgo";
+        lcd.print(horonm);;
+        horoln = 'f';
         break;
         case 6:
-        lcd.print("Libra");
+        horonm = "Libra";
+        lcd.print(horonm);
+        horoln = 'g';
         break;
         case 7:
-        lcd.print("Scorpio");
+        horonm = "Scorpio";
+        lcd.print(horonm);
+        horoln = 'h';
         break;
         case 8:
-        lcd.print("Sagittarius");
+        horonm = "Sagittarius";
+        lcd.print(horonm);
+        horoln = 'i';
         break;
         case 9:
-        lcd.print("Capricorn");
+        horonm = "Capricorn";
+        lcd.print(horonm);
+        horoln = 'j';
         break;
         case 10:
-        lcd.print("Aquarius");
+        horonm = "Aquarius";
+        lcd.print(horonm);
+        horoln = 'k';
         break;
         case 11:
-        lcd.print("Pisces");
-        case -1:
-        starsign = 11;
-        case 12:
+        horonm = "Pisces";
+        lcd.print(horonm);
+        horoln = 'l';
         starsign = -1;
       }
     }
   }
   lcd.noBlink();
+  Serial.println(horoln);
+  }
   }
 
 

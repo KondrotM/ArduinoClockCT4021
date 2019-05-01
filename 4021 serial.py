@@ -1,4 +1,5 @@
 from time import sleep
+import pyaztro
 import pyowm
 import serial
 ser = serial.Serial('com3', 9600) # Establish the connection on a specific port
@@ -31,14 +32,20 @@ def sendweather():
      location = owm.weather_at_place('Cheltenham,GB')
      weather = location.get_weather()
      wth = str(weather.get_temperature('celsius')['temp'])
-     sts = weather.get_detailed_status()
+     sts = weather.get_status()
      sts +=' '+wth+'C\n'
-     print(sts)
      for i in range(1):
           print(sts)
           ser.write(str.encode(sts))
           if ser.in_waiting:
-               print (ser.readline()) 
+               print (ser.readline())
+
+def sendhoroscope():
+     horoscope = pyaztro.Aztro('pisces')
+     horoln = horoscope.mood + ', ' + str(horoscope.lucky_number) + '\n'
+     print(horoln)
+     ser.write(str.encode(horoln))
+
           
 while True:
      if ser.in_waiting:
@@ -48,8 +55,8 @@ while True:
           if ino == "b'w'":
                sendweather()
           elif ino == "b'h'":
-               sendword("horoscope")
-          elif ino == "b'!'":
+               sendhoroscope()
+          elif ino == "b't'":
                sendword("time")
           elif ino == "b's'":
                sendword("settings")

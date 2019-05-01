@@ -1,23 +1,47 @@
+#include <Wire.h> // 1
+#include <TimeLib.h> // 2 
+#include <RtcDS3231.h> // 3 import modules for DS3231
 #include <LiquidCrystal.h>
-LiquidCrystal lcd(12,11,5,4,3,2);
-char incomingByte = "";
-char horoln = 'a';
-String horonm = "Aries";
-int settings = 0;
-int newmsg = 0;
-char str[256] = "";
-int buttonPushCounter = 0;
-int starsign = 0;
+#define DS3231_I2C_ADDRESS 0x68
+RtcDS3231<TwoWire> Rtc(Wire);
+LiquidCrystal lcd(12,11,5,4,3,2); //sets up LCD screen
+//RS on LCD connected to pin 12
+//E connected to pin 11
+//pins 2,3,4,5 are data pins
 
-//Moving between screens
-int screen = -1;
-int reply;
+byte decToBcd(byte val)
+{
+  return( (val/10*16) + (val%10) );
+}
+
+byte bcdToDec(byte val)
+{
+  return( (val/16*10) + (val%16) );
+}
+
+char incomingByte = "";
+char horoln = 'a'; //horoscope single character sent over serial
+String horonm = "Aries"; //horoscope display name
+int settings = 0; //turns settings on or off
+char str[256] = "";
+int buttonPushCounter = 0; //redundant from testing
+int starsign = 0; //shows starsign on settings select screen
+int screen = -1; //Moving between screens
+
+//Setting up time
+uint16_t yr = 2019;
+uint8_t mh = 1;
+uint8_t dy = 1;
+uint8_t hr = 0;
+uint8_t mn = 0;
+uint8_t sd = 0;
+
 
 //Setting up buttons
-const int buttonPin1 = 6;
-int buttonState1 = 0;
-int prevState1 = 0;
-char dscreen1 = 'w';
+const int buttonPin1 = 6; //pin on arduino
+int buttonState1 = 0; //current state
+int prevState1 = 0; //previous state
+char dscreen1 = 'w'; //redundant
 
 const int buttonPin2 = 7;
 int buttonState2 = 0;
@@ -48,12 +72,15 @@ char receivedChars[numChars]; //array to store receieved data
 boolean newData = false;
 
 void setup() {
-  Serial.begin(9600);
-  lcd.begin(16,2);
-  pinMode(buttonPin1, INPUT);
+  Serial.begin(9600); //sets baud rate
+  lcd.begin(16,2); //size of lcd
+  pinMode(buttonPin1, INPUT); //sets all button pin integers to actual pins
   pinMode(buttonPin2, INPUT);
   pinMode(buttonPin3, INPUT);
   pinMode(buttonPin4, INPUT);
+  Rtc.Begin();
+  RtcDateTime manual = RtcDateTime(yr,mh,dy,hr,mn,sd);
+  Rtc.SetDateTime(manual);
   lcd.print("Enter data through");
   lcd.setCursor(0,1);
   lcd.print("serial port :)");
@@ -71,10 +98,10 @@ void receive() {
   char endMarker = '\n';
   char rc;
 
-  if (Serial.available() > 0) {
-    rc = Serial.read();
-    if (rc != endMarker) {
-      receivedChars[ndx] = rc;
+  if (Serial.available() > 0) { //if there is a byte available to read
+    rc = Serial.read(); 
+    if (rc != endMarker) { //checks if byte is \n, the end marker
+      receivedChars[ndx] = rc; //appends byte to word sent, increments ndx until end marker
       ndx++;
       if (ndx >= numChars){
         ndx = numChars - 1;
@@ -91,11 +118,87 @@ void receive() {
 void showWeather() {
   lcd.clear();
   lcd.setCursor(0,0);
-  lcd.print("WEATHER");
+  lcd.print("Weather"); 
   lcd.setCursor(0,1);
-  Serial.println('w');
+  Serial.println('w'); //sends input to python script on computer
   //receive();
   //showNewData();
+}
+
+void readDS3231time(byte *second,
+byte *minute,
+byte *hour,
+byte *dayOfWeek,
+byte *dayOfMonth,
+byte *month,
+byte *year)
+{
+  Wire.beginTransmission(DS3231_I2C_ADDRESS);
+  Wire.write(0); 
+  Wire.endTransmission();
+  Wire.requestFrom(DS3231_I2C_ADDRESS, 7);
+  
+  *second = bcdToDec(Wire.read() & 0x7f);
+  *minute = bcdToDec(Wire.read());
+  *hour = bcdToDec(Wire.read() & 0x3f);
+  *dayOfWeek = bcdToDec(Wire.read());
+  *dayOfMonth = bcdToDec(Wire.read());
+  *month = bcdToDec(Wire.read());
+  *year = bcdToDec(Wire.read());
+}
+
+void displayTime()
+{
+  byte second, minute, hour, dayOfWeek, dayOfMonth, month, year;
+  
+  readDS3231time(&second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month,
+  &year);
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print(hour, DEC);
+ 
+  lcd.print(":");
+  if (minute<10)
+  {
+    lcd.print("0");
+  }
+  lcd.print(minute, DEC);
+  lcd.print(":");
+  if (second<10)
+  {
+    lcd.print("0");
+  }
+  lcd.print(second, DEC);
+  lcd.setCursor(0,1);
+  lcd.print(dayOfMonth, DEC);
+  lcd.print("/");
+  lcd.print(month, DEC);
+  lcd.print("/");
+  lcd.print(year, DEC);
+  lcd.print(", ");
+  switch(dayOfWeek){
+  case 1:
+    lcd.println("Sun");
+    break;
+  case 2:
+    lcd.println("Mon ");
+    break;
+  case 3:
+    lcd.println("Tue");
+    break;
+  case 4:
+    lcd.println("Wed");
+    break;
+  case 5:
+    lcd.println("Thu");
+    break;
+  case 6:
+    lcd.println("Fri");
+    break;
+  case 7:
+    lcd.println("Sat");
+    break;
+  }
 }
 
 void showTime() {
@@ -103,7 +206,8 @@ void showTime() {
   lcd.setCursor(0,0);
   lcd.print("TIME");
   lcd.setCursor(0,1);
-  Serial.println('t');
+//  Wire.beginTransmission(DS3231_I2C_ADDRESS);
+//  lcd.print(decToBcd(second)
   }
 
 
@@ -112,16 +216,16 @@ void showHoroscope() {
   lcd.setCursor(0,0);
   lcd.print(horonm);
   lcd.setCursor(0,1);
-  Serial.println(horoln);
+  Serial.println(horoln); //sends input to python script on computer, 
+                          //based on horoscope profile on arduino
 }
 
 
 char showNewData() {
   if (newData == true) {
-    newData = false;
+    newData = false; //no new data once new data detected
     lcd.setCursor(0,1);
-    //Serial.println('a');
-    lcd.print(receivedChars);
+    lcd.print(receivedChars); //prints recieved data
   }
 }
 
@@ -139,14 +243,14 @@ int checkbutton(int buttonState,int buttonPin, int prevState, char dscreen) {
 
 void showSettings(int screen){
   if (screen == 1) {
-  int newsign = 1;
-  while (settings){
-  lcd.blink();
+  int newsign = 1; //checks for new starsign input
+  while (settings){ //remain in settings until settings turned off
+  lcd.blink(); //visual aid for selecting starsign
   
   buttonState4 = digitalRead(buttonPin4);
   if (buttonState4 != prevState4) {
     if (buttonState4 == HIGH) {
-      settings = 0;
+      settings = 0; //button4 turns off settings
     }
     prevState4 = buttonState4;
   }  
@@ -156,7 +260,7 @@ void showSettings(int screen){
   if (buttonState3 != prevState3) {
     if (buttonState3 == HIGH) {
       newsign = 1;
-      starsign += 1;
+      starsign += 1; //increments to next sign
       }
     prevState3 = buttonState3;
   }
@@ -165,7 +269,7 @@ void showSettings(int screen){
       newsign = 0;
       lcd.clear();
       lcd.setCursor(0,0);
-      switch(starsign){
+      switch(starsign){ //displays selected starsign, sets horoln for serial transfer
         case 0:
         horonm = "Aries";
         lcd.print(horonm);
@@ -229,8 +333,9 @@ void showSettings(int screen){
       }
     }
   }
-  lcd.noBlink();
-  Serial.println(horoln);
+  //once settings turned off
+  lcd.noBlink(); //blink aid stops
+  Serial.println(horoln); //saves last selected starsign
   }
   }
 
@@ -246,7 +351,7 @@ void loop(){
         buttonState1 = digitalRead(buttonPin1);
         if (buttonState1 != prevState1) {
           if (buttonState1 == HIGH) {
-            screen += 1;
+            screen += 1; //button cylcles screens on clock
             switch(screen){
               case 0:
               showWeather();
@@ -255,8 +360,8 @@ void loop(){
               showHoroscope();
               break;
               case 2:
-              showTime();
-              screen = -1;
+              displayTime();
+              screen = -1; //loops back to first screen
             }
           }
           prevState1 = buttonState1;
@@ -265,12 +370,12 @@ void loop(){
         buttonState4 = digitalRead(buttonPin4);
         if (buttonState4 != prevState4) {
           if (buttonState4 == HIGH) {
-            settings = 1;
+            settings = 1; //button displays settings
             prevState4 = buttonState4;
             showSettings(screen);
           }
           prevState4 = buttonState4;
         }
-        receive();
-        showNewData();
+        receive(); //any requested data is sent
+        showNewData(); //sent data displayed on bottom text
   }

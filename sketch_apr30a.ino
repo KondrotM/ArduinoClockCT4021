@@ -2,74 +2,64 @@
 #include <TimeLib.h> // 2 
 #include <RtcDS3231.h> // 3 import modules for DS3231
 #include <LiquidCrystal.h>
+
+// allows communication to DS3231 - code based from https://forum.arduino.cc/index.php?topic=398891.0
 #define DS3231_I2C_ADDRESS 0x68
 RtcDS3231<TwoWire> Rtc(Wire);
-LiquidCrystal lcd(12,11,5,4,3,2); //sets up LCD screen
-//RS on LCD connected to pin 12
-//E connected to pin 11
-//pins 2,3,4,5 are data pins
 
-byte decToBcd(byte val)
-{
+//sets up LCD screen - code based on built-in arduino examples
+LiquidCrystal lcd(12,11,5,4,3,2); 
+                                  // RS on LCD connected to pin 12
+                                  // E connected to pin 11
+                                  // pins 2,3,4,5 are data pins
+                                  
+byte decToBcd(byte val) {
   return( (val/10*16) + (val%10) );
 }
 
-byte bcdToDec(byte val)
-{
+byte bcdToDec(byte val) {
   return( (val/16*10) + (val%16) );
 }
 
-char incomingByte = "";
-char horoln = 'a'; //horoscope single character sent over serial
-String horonm = "Aries"; //horoscope display name
-int settings = 0; //turns settings on or off
+char horoln = 'a'; // horoscope single character sent over serial
+String horonm = "Aries"; // horoscope display name
+int settings = 0; // turns settings on or off
 char str[256] = "";
-int buttonPushCounter = 0; //redundant from testing
-int starsign = 0; //shows starsign on settings select screen
-int screen = -1; //Moving between screens
+int starsign = 0; // shows starsign on settings select screen
+int screen = -1; // Moving between screens
 
-//Setting up time
-uint16_t yr = 2019; //unsigned 16-bit integer value given by clock module
-uint8_t mh = 1; //unsigned 8-bit integer values given by clock module
-uint8_t dy = 1;
-uint8_t hr = 0;
-uint8_t mn = 0;
-uint8_t sd = 0;
+// Setting up time
+uint16_t yr = 2019; // unsigned 16-bit integer value given by clock module
+uint8_t mh = 1, // unsigned 8-bit integer values given by clock module
+dy = 1, hr = 0, mn = 0, sd = 0;
 
-
-//Setting up buttons
-const int buttonPin1 = 6; //pin on arduino
-int buttonState1 = 0; //current state
-int prevState1 = 0; //previous state
-char dscreen1 = 'w'; //redundant
+// Setting up buttons
+const int buttonPin1 = 6; // pin on arduino
+int buttonState1 = 0; // current state
+int prevState1 = 0; // previous state
 
 const int buttonPin2 = 7;
 int buttonState2 = 0;
 int prevState2 = 0;
-char dscreen2 = 'h';
 
 const int buttonPin3 = 8;
 int buttonState3 = 0;
 int prevState3 = 0;
-char dscreen3 = "t";
 
 const int buttonPin4 = 9;
 int buttonState4 = 0;
 int prevState4 = 0;
-char dscreen4 = 's';
 
-
-
-//Show words from serial
+// Show words from serial - code based from http://forum.arduino.cc/index.php?topic=353219.0
 char inData[20]; // Allocate some space for the string
 char inChar=-1; // Where to store the character read
 byte index = 0; // Index into array; where to store the character
 
-//Receive with end marker
+// Receive with end marker - code based from https://forum.arduino.cc/index.php?topic=288234.0
 const byte numChars = 32;
-char receivedChars[numChars]; //array to store receieved data
+char receivedChars[numChars]; // array to store receieved data
 
-boolean newData = false;
+boolean newData = false; // later becomes true if any new serial data is sent
 
 void setup() {
   Serial.begin(9600); //sets baud rate
@@ -78,30 +68,26 @@ void setup() {
   pinMode(buttonPin2, INPUT);
   pinMode(buttonPin3, INPUT);
   pinMode(buttonPin4, INPUT);
-  Rtc.Begin();
-  RtcDateTime manual = RtcDateTime(yr,mh,dy,hr,mn,sd);
-  Rtc.SetDateTime(manual);
-  lcd.print("Enter data through");
+  Rtc.Begin(); //enables communication to Real Time Clock
+  RtcDateTime manual = RtcDateTime(yr,mh,dy,hr,mn,sd); // creates RTC-compliant variable with local time
+  Rtc.SetDateTime(manual); // sends local time to RTC
+  
+  // print startup message
+  lcd.print("Matej Kondrot");
   lcd.setCursor(0,1);
-  lcd.print("serial port :)");
+  lcd.print("CT4021, :)");
 }
 
-//https://ubuntuforums.org/showthread.php?t=1016188
-void append(char* s, char c) {
-        int len = strlen(s);
-        s[len] = c;
-        s[len+1] = '\0';
-}
-
+// code based off arduino serial basics - https://forum.arduino.cc/index.php?topic=396450.0
 void receive() {
-  static byte ndx = 0;
-  char endMarker = '\n';
-  char rc;
+  static byte ndx = 0; // byte which is used to create string
+  char endMarker = '\n'; // line break 
+  char rc; // individual serial character 
 
   if (Serial.available() > 0) { //if there is a byte available to read
     rc = Serial.read(); 
     if (rc != endMarker) { //checks if byte is \n, the end marker
-      receivedChars[ndx] = rc; //appends byte to word sent, increments ndx until end marker
+      receivedChars[ndx] = rc; //appends byte to word sent, increments ndx until line break
       ndx++;
       if (ndx >= numChars){
         ndx = numChars - 1;
@@ -121,10 +107,12 @@ void showWeather() {
   lcd.print("Weather"); 
   lcd.setCursor(0,1);
   Serial.println('w'); //sends input to python script on computer
-  //receive();
-  //showNewData();
 }
 
+// code based off http://combustory.com/wiki/index.php/RTC1307_-_Real_Time_Clock
+// this code is not meant for the RTC module used, and can likely be optimised,
+// but with minor modifications (byte variables to unsigned 8-bit integer),
+// it still works and i'm afraid to break it
 void readDS3231time(uint8_t *second,
 uint8_t *minute,
 uint8_t *hour,
@@ -149,18 +137,17 @@ uint16_t *year)
 
 void displayTime() {
 byte prevsec = 0;
-bool showtime = 1;
-while(showtime){
+bool showtime = 1; //refreshes the screen each second rather than only on first button press
+while(showtime){   // ^
   uint8_t  second, minute, hour, dayOfWeek, dayOfMonth, month;
   uint16_t year;
   
-  readDS3231time(&second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month,
-  &year);
+  readDS3231time(&second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month, &year); // grabs time from previous function
   if (prevsec != second){
   lcd.clear();
   lcd.setCursor(0,0);
-  if (hour<10){
-    lcd.print("0");
+  if (hour<10){ // integers below 10 are single-digit. to make the screen look nice an extra "0" is printed to make each number two-digit.
+    lcd.print("0"); //prints whole date and time, keeping each time value seperate.
   }
   lcd.print(hour, DEC);
  
@@ -189,66 +176,49 @@ while(showtime){
   lcd.print("/");
   lcd.print(year, DEC);
   lcd.print(", ");
-  switch(dayOfWeek){
+  switch(dayOfWeek){ // prints day of the week
   case 1:
-    lcd.println("Sun   ");
-    break;
+    lcd.print("Mon"); // days moved up one position to account for (possible) hardware error
+    break;            // maybe it was intended this way
   case 2:
-    lcd.println("Mon   ");
+    lcd.print("Tue");
     break;
   case 3:
-    lcd.println("Tue   ");
+    lcd.print("Wed");
     break;
   case 4:
-    lcd.println("Wed   ");
+    lcd.print("Thu");
     break;
   case 5:
-    lcd.println("Thu   ");
+    lcd.print("Fri");
     break;
   case 6:
-    lcd.println("Fri   ");
+    lcd.print("Sat");
     break;
   case 7:
-    lcd.println("Sat   ");
+    lcd.print("Sun");
     break;
   }
   }
-  prevsec = second;
+  prevsec = second; // updates each second rather than each loop
   buttonState1 = digitalRead(buttonPin1);
   if (buttonState1 != prevState1) {
     if (buttonState1 == HIGH) {
-      showtime = 0;
+      showtime = 0; // breaks loop, next screen displayed
       }
     prevState1 = buttonState1;
   }
   buttonState4 = digitalRead(buttonPin4);
     if (buttonState4 != prevState4) {
       if (buttonState4 == HIGH) {
-        settings = 1; //button displays settings
-        prevState4 = buttonState4; buttonState4 = digitalRead(buttonPin4);
-        if (buttonState4 != prevState4) {
-          if (buttonState4 == HIGH) {
-            settings = 1; //button displays settings
-            prevState4 = buttonState4;
-            showSettings(screen);
-          }
-          prevState4 = buttonState4;
-        }
-        showSettings(screen);
+        settings = 1; // settings loop enabled
+        prevState4 = buttonState4;
+        showSettings(screen); //opens settings based on which screen is enabled (time settings in this case)
       }
       prevState4 = buttonState4;
     }
 }
 }
-
-void showTime() {
-  lcd.clear();
-  lcd.setCursor(0,0);
-  lcd.print("TIME");
-  lcd.setCursor(0,1);
-//  Wire.beginTransmission(DS3231_I2C_ADDRESS);
-//  lcd.print(decToBcd(second)
-  }
 
 
 void showHoroscope() {
@@ -267,18 +237,6 @@ char showNewData() {
     lcd.setCursor(0,1);
     lcd.print(receivedChars); //prints recieved data
   }
-}
-
-int checkbutton(int buttonState,int buttonPin, int prevState, char dscreen) {
-  buttonState = digitalRead(buttonPin);
-  if (buttonState != prevState){
-    if (buttonState == HIGH) {
-      buttonPushCounter++;
-      Serial.println(buttonPushCounter);
-    }
-  }
-  return buttonState;
-
 }
 
 void showSettings(int screen){
@@ -378,42 +336,46 @@ void showSettings(int screen){
   Serial.println(horoln); //saves last selected starsign
   }
   if (screen = 2){
-    lcd.blink ();
-    int init = 1;
-    int timescreen = -1;
+    lcd.blink (); // caret blinks to indicate settings mode
+    int init = 1; // first settings option is entered immediately on startup
+    int timeval = 0; // designates which time value is being edited
+    int timescreen = -1; // cycles between screens
     uint8_t second, minute, hour, dayOfWeek, dayOfMonth, month;
     uint16_t year;
-    readDS3231time(&sd, &mn, &hr, &dayOfWeek, &dy, &mn, &yr);
-  //  yr = year; mh = month; dy = dayofMonth; hr = hour; mn = minute; sd = second;
+    readDS3231time(&sd, &mn, &hr, &dayOfWeek, &dy, &mh, &yr); // grabs temporary time settings
     while(settings){
-      buttonState1 = digitalRead(buttonPin1);
+      buttonState1 = digitalRead(buttonPin1); // cycles between screens
       if (buttonState1 != prevState1 || init) {
         if (buttonState1 == HIGH || init) {
           init = 0;
           timescreen ++;
           switch(timescreen){
             case 0:
-            lcd.setCursor(2,0);
+            lcd.setCursor(2,0); // cursor positioning and blinking caret indicates which value is being edited
+            timeval = 0; // used to determine which value is being edited when button3 is pressed
             break;
             case 1:
             lcd.setCursor(5,0);
+            timeval = 1;
             break;
             case 2:
             lcd.setCursor(8,0);
+            timeval = 2;
             break;
             case 3:
             lcd.setCursor(2,1);
+            timeval = 3;
             break;
             case 4:
             lcd.setCursor(5,1);
+            timeval = 4;
             break;
             case 5:
             lcd.setCursor(8,1);
-            timescreen = -1;
+            timeval = 5;
+            timescreen = -1; // cycles back to the start
           }
-          //timescreen += 1
-      
-          }
+        }
           prevState1 = buttonState1;
       }
       
@@ -424,20 +386,87 @@ void showSettings(int screen){
         }
       prevState4 = buttonState4;
      }  
+
+     buttonState3 = digitalRead(buttonPin3);
+      if (buttonState3 != prevState3) {
+        if (buttonState3 == HIGH) {
+          switch(timeval){ // increments selected time value
+            case 0:
+            lcd.setCursor(0,0); // sets cursor to overwrite previous value on screen
+            hr ++; // increments value
+            if (hr > 23){ // if variable is too great for datetime, cycles back to 0,
+              hr = 0;
+            }
+            if (hr < 10){     // if number is 1 digit
+              lcd.print("0"); // prints an extra digit so each number has two digits
+            }
+            lcd.print(hr); // prints hour number
+            break; // breaks switch loop until button is pressed again
+            case 1: // repeat previous case with minute value, etc.
+            lcd.setCursor(3,0);
+            mn ++;
+            if (mn > 59){
+              mn = 0;
+            }
+            if (mn < 10) {
+              lcd.print("0");
+            }
+            lcd.print(mn);
+            break;
+            case 2:
+            lcd.setCursor(6,0);
+            sd ++;
+            if (sd > 59){
+              sd = 0;
+            }
+            if (sd < 10){
+              lcd.print("0");
+            }
+            lcd.print(sd);
+            break;
+            case 3:
+            lcd.setCursor(0,1);
+            dy ++;
+            if (dy > 31){
+              dy = 0;
+            }
+            if (dy < 10){
+              lcd.print("0");
+            }
+            lcd.print(dy);
+            break;
+            case 4:
+            lcd.setCursor(3,1);
+            mh ++;
+            if (mh > 12){
+              mh = 1;
+            }
+            if (mh < 10){
+              lcd.print("0");
+            }
+            lcd.print(mh);
+            break;
+            case 5:
+            lcd.setCursor(6,1);
+            yr++;
+            if (yr < 10){
+              lcd.print("0");
+            }
+            lcd.print(yr);
+          }
+        }
+      prevState3 = buttonState3;
+     }  
     
     }
-    lcd.noBlink();
-    RtcDateTime manual = RtcDateTime(yr,mn,dy,hr,mn,sd);
-    Rtc.SetDateTime(manual);
+    // once settings have been exit
+    lcd.noBlink(); // caret stops blinking
+    RtcDateTime manual = RtcDateTime(yr,mh,dy,hr,mn,sd); // time set in settings becomes real local time
+    Rtc.SetDateTime(manual); // new local time is sent to clock module
   }
 
 }
 
-void scrolltext(char line2){
-int stringStart, stringStop = 0;
-int scrollCursor = 16;
-      
-}
 bool isloop = 0;
 void loop(){
         buttonState1 = digitalRead(buttonPin1);

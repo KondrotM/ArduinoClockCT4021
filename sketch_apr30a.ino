@@ -29,8 +29,8 @@ int starsign = 0; //shows starsign on settings select screen
 int screen = -1; //Moving between screens
 
 //Setting up time
-uint16_t yr = 2019;
-uint8_t mh = 1;
+uint16_t yr = 2019; //unsigned 16-bit integer value given by clock module
+uint8_t mh = 1; //unsigned 8-bit integer values given by clock module
 uint8_t dy = 1;
 uint8_t hr = 0;
 uint8_t mn = 0;
@@ -125,13 +125,13 @@ void showWeather() {
   //showNewData();
 }
 
-void readDS3231time(byte *second,
-byte *minute,
-byte *hour,
-byte *dayOfWeek,
-byte *dayOfMonth,
-byte *month,
-byte *year)
+void readDS3231time(uint8_t *second,
+uint8_t *minute,
+uint8_t *hour,
+uint8_t *dayOfWeek,
+uint8_t *dayOfMonth,
+uint8_t *month,
+uint16_t *year)
 {
   Wire.beginTransmission(DS3231_I2C_ADDRESS);
   Wire.write(0); 
@@ -147,14 +147,21 @@ byte *year)
   *year = bcdToDec(Wire.read());
 }
 
-void displayTime()
-{
-  byte second, minute, hour, dayOfWeek, dayOfMonth, month, year;
+void displayTime() {
+byte prevsec = 0;
+bool showtime = 1;
+while(showtime){
+  uint8_t  second, minute, hour, dayOfWeek, dayOfMonth, month;
+  uint16_t year;
   
   readDS3231time(&second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month,
   &year);
+  if (prevsec != second){
   lcd.clear();
   lcd.setCursor(0,0);
+  if (hour<10){
+    lcd.print("0");
+  }
   lcd.print(hour, DEC);
  
   lcd.print(":");
@@ -170,35 +177,68 @@ void displayTime()
   }
   lcd.print(second, DEC);
   lcd.setCursor(0,1);
+  if (dayOfMonth<10){
+    lcd.print("0");
+  }
   lcd.print(dayOfMonth, DEC);
   lcd.print("/");
+  if (month<10){
+    lcd.print("0");
+  }
   lcd.print(month, DEC);
   lcd.print("/");
   lcd.print(year, DEC);
   lcd.print(", ");
   switch(dayOfWeek){
   case 1:
-    lcd.println("Sun");
+    lcd.println("Sun   ");
     break;
   case 2:
-    lcd.println("Mon ");
+    lcd.println("Mon   ");
     break;
   case 3:
-    lcd.println("Tue");
+    lcd.println("Tue   ");
     break;
   case 4:
-    lcd.println("Wed");
+    lcd.println("Wed   ");
     break;
   case 5:
-    lcd.println("Thu");
+    lcd.println("Thu   ");
     break;
   case 6:
-    lcd.println("Fri");
+    lcd.println("Fri   ");
     break;
   case 7:
-    lcd.println("Sat");
+    lcd.println("Sat   ");
     break;
   }
+  }
+  prevsec = second;
+  buttonState1 = digitalRead(buttonPin1);
+  if (buttonState1 != prevState1) {
+    if (buttonState1 == HIGH) {
+      showtime = 0;
+      }
+    prevState1 = buttonState1;
+  }
+  buttonState4 = digitalRead(buttonPin4);
+    if (buttonState4 != prevState4) {
+      if (buttonState4 == HIGH) {
+        settings = 1; //button displays settings
+        prevState4 = buttonState4; buttonState4 = digitalRead(buttonPin4);
+        if (buttonState4 != prevState4) {
+          if (buttonState4 == HIGH) {
+            settings = 1; //button displays settings
+            prevState4 = buttonState4;
+            showSettings(screen);
+          }
+          prevState4 = buttonState4;
+        }
+        showSettings(screen);
+      }
+      prevState4 = buttonState4;
+    }
+}
 }
 
 void showTime() {
@@ -337,20 +377,73 @@ void showSettings(int screen){
   lcd.noBlink(); //blink aid stops
   Serial.println(horoln); //saves last selected starsign
   }
+  if (screen = 2){
+    lcd.blink ();
+    int init = 1;
+    int timescreen = -1;
+    uint8_t second, minute, hour, dayOfWeek, dayOfMonth, month;
+    uint16_t year;
+    readDS3231time(&sd, &mn, &hr, &dayOfWeek, &dy, &mn, &yr);
+  //  yr = year; mh = month; dy = dayofMonth; hr = hour; mn = minute; sd = second;
+    while(settings){
+      buttonState1 = digitalRead(buttonPin1);
+      if (buttonState1 != prevState1 || init) {
+        if (buttonState1 == HIGH || init) {
+          init = 0;
+          timescreen ++;
+          switch(timescreen){
+            case 0:
+            lcd.setCursor(2,0);
+            break;
+            case 1:
+            lcd.setCursor(5,0);
+            break;
+            case 2:
+            lcd.setCursor(8,0);
+            break;
+            case 3:
+            lcd.setCursor(2,1);
+            break;
+            case 4:
+            lcd.setCursor(5,1);
+            break;
+            case 5:
+            lcd.setCursor(8,1);
+            timescreen = -1;
+          }
+          //timescreen += 1
+      
+          }
+          prevState1 = buttonState1;
+      }
+      
+      buttonState4 = digitalRead(buttonPin4);
+      if (buttonState4 != prevState4) {
+        if (buttonState4 == HIGH) {
+          settings = 0; //button4 turns off settings
+        }
+      prevState4 = buttonState4;
+     }  
+    
+    }
+    lcd.noBlink();
+    RtcDateTime manual = RtcDateTime(yr,mn,dy,hr,mn,sd);
+    Rtc.SetDateTime(manual);
   }
 
-
+}
 
 void scrolltext(char line2){
 int stringStart, stringStop = 0;
 int scrollCursor = 16;
       
 }
-
+bool isloop = 0;
 void loop(){
         buttonState1 = digitalRead(buttonPin1);
         if (buttonState1 != prevState1) {
-          if (buttonState1 == HIGH) {
+          if (buttonState1 == HIGH || isloop) {
+            isloop = 0;
             screen += 1; //button cylcles screens on clock
             switch(screen){
               case 0:
@@ -360,7 +453,10 @@ void loop(){
               showHoroscope();
               break;
               case 2:
+              prevState1 = buttonState1;
               displayTime();
+              isloop = 1; //since the previous buttonpress was done to come out of the displayTime() loop,
+                          //an extra prompt is needed to loop the screen without an extra button press
               screen = -1; //loops back to first screen
             }
           }
